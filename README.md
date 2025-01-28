@@ -18,7 +18,6 @@ Clone this repository and install the required Python packages:
 
 ```bash
 git clone https://github.com/ZainabAldhanhani/Assignment1_CV703.git
-git clone 
 cd Assignment1_CV703
 pip install -r requirements.txt
 ```
