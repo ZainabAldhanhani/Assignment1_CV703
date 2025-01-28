@@ -1,4 +1,4 @@
-# Assignment1_CV703
+# Assignment1 CV703
 
 
 ## Repository Structure
@@ -10,7 +10,7 @@
 - `Train and evaluate all models`: Train and evaluate all models, get the best model and its name
 - `Visualization/`: View dataset samples
 - `README.md`: Overview and setup instructions.
-- `requirements.txt`: Required libraries for the project.
+- `requirements.txt`: Required libraries for the Assignment.
 
 
 ## Install Requirements
