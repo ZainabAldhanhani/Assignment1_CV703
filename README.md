@@ -10,9 +10,12 @@
 - `requirements.txt`: Required libraries for the Assignment.
 
 ## Dsataset 
-![Diagram](Figures/Flowers102.png "Flowers102")
-![Diagram](Figures/Imagewoof.png "Imagewoof")
-![Diagram](Figures/combinedSet.png "combinedSet")
+<img src="Figures/Flowers102.png" alt="Flowers102" width="400">
+
+<img src="Figures/Imagewoof.png" alt="Flowers102" width="400">
+
+<img src="Figures/combinedSet.png" alt="Flowers102" width="400">
+
 
 ## Install Requirements
 Clone this repository and install the required Python packages:
