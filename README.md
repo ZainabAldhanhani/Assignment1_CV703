@@ -9,6 +9,8 @@
 - `README.md`: Overview and setup instructions.
 - `requirements.txt`: Required libraries for the Assignment.
 
+## Architecture
+![Diagram](Figures/Diagram.png "Diagram")
 
 ## Install Requirements
 Clone this repository and install the required Python packages:
