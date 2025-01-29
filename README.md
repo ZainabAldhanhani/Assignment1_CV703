@@ -9,8 +9,10 @@
 - `README.md`: Overview and setup instructions.
 - `requirements.txt`: Required libraries for the Assignment.
 
-## Architecture
-![Diagram](Figures/Diagram.png "Diagram")
+## Dsataset 
+![Diagram](Figures/Flowers102.png "Flowers102")
+![Diagram](Figures/Imagewoof.png "Imagewoof")
+![Diagram](Figures/combinedSet.png "combinedSet")
 
 ## Install Requirements
 Clone this repository and install the required Python packages:
