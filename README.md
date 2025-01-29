@@ -2,9 +2,9 @@
 
 ## Repository Structure
 
-- `Flowers102_ImageClassification/`: Classification Random Forest model and SVM Model
-- `Imagewoof_ImageClassification/`: This folder contains image examples for training dataset and testing dataset
-- `combinedSet_ImageClassification/`: Main Code including all parts (Train and evaluate all models,Test the models on the test set,Visualization, and Classification )
+- `Flowers102_ImageClassification/`: Image classification methods on Flowers102 dataset
+- `Imagewoof_ImageClassification/`: Image classification methods on Imagewoof dataset
+- `combinedSet_ImageClassification/`:Image classification methods on a combined set of (Flowers102 + FGVC Aircraft + Imagewoof)
 - `README.md`: Overview and setup instructions.
 - `requirements.txt`: Required libraries for the Assignment.
 
