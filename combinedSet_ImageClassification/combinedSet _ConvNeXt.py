@@ -145,6 +145,15 @@ model = model.to(device)
 criterion = nn.CrossEntropyLoss()
 optimizer = optim.Adam(model.parameters(), lr=1e-4)
 
+
+# Measure FLOPs and parameter count
+with torch.cuda.device(0):
+    macs, params = get_model_complexity_info(
+        model, (3, 224, 224), as_strings=True, print_per_layer_stat=False, verbose=False
+    )
+print(f"FLOPs: {macs}, Parameters: {params}")
+
+
 # Train the model
 print("\nStarting training...")
 train_losses = train_model(model, train_loader, num_epochs=15)
