@@ -15,7 +15,7 @@ import tarfile
 
 # Hyperparameters
 batch_size = 32
-num_epochs = 20  # Increased epochs for better convergence
+num_epochs = 15  # Increased epochs for better convergence
 learning_rate = 1e-4
 weight_decay = 1e-4  
 
@@ -114,9 +114,11 @@ mixup_fn = Mixup(mixup_alpha=0.2, cutmix_alpha=0.2, prob=0.5, num_classes=10)
 # Train the model
 print("\nStarting training...")
 train_losses = []
+total_training_time = 0  # To track total training time
 for epoch in range(num_epochs):
     model.train()
     running_loss = 0.0
+    start_time = time.time()  # Start timing
     for inputs, targets in train_dataloader:
         inputs, targets = inputs.to(device), targets.to(device)
 
@@ -134,9 +136,12 @@ for epoch in range(num_epochs):
     epoch_loss = running_loss / len(train_dataloader.dataset)
     train_losses.append(epoch_loss)
     scheduler.step()
+    end_time = time.time()  # End timing
+    epoch_time = end_time - start_time
+    total_training_time += epoch_time
+    print(f"Epoch [{epoch+1}/{num_epochs}], Loss: {epoch_loss:.4f}, Time: {epoch_time:.2f}s")
 
-    print(f"Epoch [{epoch+1}/{num_epochs}], Loss: {epoch_loss:.4f}")
-
+print(f"Total Training Time: {total_training_time:.2f}s")
 # Evaluate the model
 print("\nEvaluating on test set...")
 model.eval()
