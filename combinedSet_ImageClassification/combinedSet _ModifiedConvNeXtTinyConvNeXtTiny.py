@@ -10,6 +10,14 @@ import matplotlib.pyplot as plt
 from collections import Counter
 import urllib.request
 import tarfile
+import time
+
+
+batch_size = 32
+num_epochs = 15  # Increased epochs for better convergence
+learning_rate = 1e-4
+weight_decay = 1e-4
+
 
 # Define device
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -130,12 +138,22 @@ mixup_fn = Mixup(mixup_alpha=0.2, cutmix_alpha=0.2, prob=0.5, num_classes=num_cl
 criterion = SoftTargetCrossEntropy()
 
 
+# Measure FLOPs and parameter count
+with torch.cuda.device(0):
+    macs, params = get_model_complexity_info(
+        model, (3, 224, 224), as_strings=True, print_per_layer_stat=False, verbose=False
+    )
+print(f"FLOPs: {macs}, Parameters: {params}")
+
+
 # Train the model
 print("\nStarting training...")
 train_losses = []
+total_training_time = 0  # To track total training time
 for epoch in range(num_epochs):
     model.train()
     running_loss = 0.0
+    start_time = time.time()  # Start timing
     for inputs, targets in train_loader:
         inputs, targets = inputs.to(device), targets.to(device)
 
@@ -153,8 +171,12 @@ for epoch in range(num_epochs):
     epoch_loss = running_loss / len(train_loader.dataset)
     train_losses.append(epoch_loss)
     scheduler.step()
+    end_time = time.time()  # End timing
+    epoch_time = end_time - start_time
+    total_training_time += epoch_time
+    print(f"Epoch [{epoch+1}/{num_epochs}], Loss: {epoch_loss:.4f}, Time: {epoch_time:.2f}s")
 
-    print(f"Epoch [{epoch+1}/{num_epochs}], Loss: {epoch_loss:.4f}")
+print(f"Total Training Time: {total_training_time:.2f}s")
 
 # Evaluate the model
 print("\nEvaluating on test set...")
