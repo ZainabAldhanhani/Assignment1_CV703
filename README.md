@@ -12,16 +12,36 @@
 
 ## Architecture 
 Our modified ConvNeXt architecture improves performance and generalization through several enhancements. We applied stronger data augmentations like random flips, rotations, color jitter, and MixUp to improve robustness. The classifier head was updated with Dropout for better regularization, and AdamW replaced Adam for improved optimization. We also switched to SoftTargetCrossEntropy for better soft-label training and implemented a learning rate scheduler to enhance stability and convergence. These modifications collectively boost model performance and reduce overfitting.
-
+<p align="center">
 <img src="Figures/Diagram.png" alt="Diagram" width="1000">
+</p>
 
 ## Dsataset 
+The dataset consists of three subsets, each representing different image classification tasks. The images shown below are sample instances from each subset, along with their respective class labels.
+
+#### Flowers102
+
+Contains images from the Flowers102 dataset, which consists of 102 categories of flowers.
+Used to evaluate the model's ability to distinguish fine-grained flower species.
+<p align="center">
 <img src="Figures/Flowers102.png" alt="Flowers102" width="400">
+</p>
 
-<img src="Figures/Imagewoof.png" alt="Flowers102" width="400">
+#### ImageWoof 
 
+A subset of ImageNet focused on dog breeds to provide a more challenging classification problem.
+Helps assess the model's ability to differentiate between similar-looking dog breeds.
+<p align="center">
+<img src="Figures/Imagewoof.png" alt="Flowers102" width="400" algin="center">
+</p>
+
+#### Combined Dataset 
+
+A merged dataset containing images from Flowers102, FGVC Aircraft, and ImageWoof.
+Designed to evaluate the model's generalization performance across different object types (flowers, airplanes, and dogs).
+<p align="center">
 <img src="Figures/combinedSet.png" alt="Flowers102" width="400">
-
+</p>
 
 ## Install Requirements
 Clone this repository and install the required Python packages:
