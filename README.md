@@ -12,7 +12,8 @@
 
 ## Architecture 
 Our modified ConvNeXt architecture improves performance and generalization through several enhancements. We applied stronger data augmentations like random flips, rotations, color jitter, and MixUp to improve robustness. The classifier head was updated with Dropout for better regularization, and AdamW replaced Adam for improved optimization. We also switched to SoftTargetCrossEntropy for better soft-label training and implemented a learning rate scheduler to enhance stability and convergence. These modifications collectively boost model performance and reduce overfitting.
-<img src="Figures/Diagram.png" alt="Diagram" width="400">
+
+<img src="Figures/Diagram.png" alt="Diagram" width="1000">
 
 ## Dsataset 
 <img src="Figures/Flowers102.png" alt="Flowers102" width="400">
