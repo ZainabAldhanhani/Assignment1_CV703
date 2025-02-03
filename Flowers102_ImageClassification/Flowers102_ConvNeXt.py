@@ -2,10 +2,17 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 from torchvision import datasets, models, transforms
-from torch.utils.data import DataLoader
-import time  
-from ptflops import get_model_complexity_info 
+from torch.utils.data import DataLoader,ConcatDataset
+import time
+from ptflops import get_model_complexity_info
 import matplotlib.pyplot as plt
+import os
+import urllib.request
+import tarfile
+import torchvision
+from torchvision.datasets import ImageFolder
+from collections import Counter
+
 
 def train_model(model, train_loader, num_epochs):
     model.train()
@@ -27,9 +34,10 @@ def train_model(model, train_loader, num_epochs):
         total_training_time += epoch_time
         train_losses.append(running_loss / len(train_loader))
         print(f"Epoch {epoch+1}/{num_epochs}, Loss: {train_losses[-1]:.4f}, Time: {epoch_time:.2f}s")
-        
+
     print(f"Total Training Time: {total_training_time:.2f}s")
     return train_losses
+
 
 
 # Evaluation function
@@ -76,6 +84,7 @@ train_dataloader = DataLoader(flowers_train, batch_size=32, shuffle=True)
 test_dataloader = DataLoader(flowers_test, batch_size=32, shuffle=False)
 
 # Load ConvNeXt model (pretrained on ImageNet)
+#model = models.convnext_tiny(pretrained=True)
 model = models.convnext_tiny(pretrained=True)
 
 # Modify the classifier head for 102 classes
@@ -94,8 +103,6 @@ with torch.cuda.device(0):  # Ensure the device matches your setup
     )
 print(f"FLOPs: {macs}, Parameters: {params}")
 
-
-
 # Train the model
 print("\nStarting training...")
 train_losses = train_model(model, train_dataloader, num_epochs)
@@ -112,3 +119,6 @@ plt.title('Training Loss Curve')
 plt.legend()
 plt.show()
 
+# Save the trained model
+#torch.save(model.state_dict(), "convnext_flowers_imagewoof.pth")
+#print("Model saved as 'convnext_flowers_imagewoof.pth'")
