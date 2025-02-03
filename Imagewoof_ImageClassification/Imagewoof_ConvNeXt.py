@@ -1,17 +1,18 @@
 import torch
+import torch.nn as nn
 import torch.optim as optim
 from torchvision import datasets, models, transforms
-import time  
-from ptflops import get_model_complexity_info 
+from torch.utils.data import DataLoader,ConcatDataset
+import time
+from ptflops import get_model_complexity_info
 import matplotlib.pyplot as plt
 import os
-from torchvision.datasets import ImageFolder
-from torch import nn, optim
-from torch.utils.data import ConcatDataset, DataLoader
-import matplotlib.pyplot as plt
-from collections import Counter
 import urllib.request
 import tarfile
+import torchvision
+from torchvision.datasets import ImageFolder
+from collections import Counter
+from torch.nn import BatchNorm1d
 
 def train_model(model, train_loader, num_epochs):
     model.train()
@@ -33,7 +34,7 @@ def train_model(model, train_loader, num_epochs):
         total_training_time += epoch_time
         train_losses.append(running_loss / len(train_loader))
         print(f"Epoch {epoch+1}/{num_epochs}, Loss: {train_losses[-1]:.4f}, Time: {epoch_time:.2f}s")
-        
+
     print(f"Total Training Time: {total_training_time:.2f}s")
     return train_losses
 
@@ -56,12 +57,6 @@ def evaluate_model(model, dataloader):
     accuracy = 100.0 * correct / total
     print(f"Evaluation Accuracy: {accuracy:.2f}%")
     return accuracy
-
-# Hyperparameters
-batch_size = 32
-num_epochs = 15
-learning_rate = 1e-4
-weight_decay = 0.01
 
 def download_imagewoof(url, download_path, extract_path):
     if not os.path.exists(os.path.dirname(download_path)):
@@ -110,7 +105,8 @@ test_dataloader = DataLoader(imagewoof_val, batch_size=32, shuffle=False)
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 # Load ConvNeXt model (pretrained on ImageNet)
-model = models.convnext_base(pretrained=True)
+#model = models.convnext_base(pretrained=True)
+model = models.convnext_tiny(pretrained=True)
 
 # Modify the classifier head for 10 classes (ImageWoof has 10 classes)
 num_features = model.classifier[2].in_features
@@ -127,6 +123,8 @@ with torch.cuda.device(0):  # Ensure the device matches your setup
         model, (3, 224, 224), as_strings=True, print_per_layer_stat=False, verbose=False
     )
 print(f"FLOPs: {macs}, Parameters: {params}")
+
+
 
 # Train the model
 print("\nStarting training...")
