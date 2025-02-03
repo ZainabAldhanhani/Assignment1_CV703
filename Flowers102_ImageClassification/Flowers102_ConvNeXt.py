@@ -119,6 +119,3 @@ plt.title('Training Loss Curve')
 plt.legend()
 plt.show()
 
-# Save the trained model
-#torch.save(model.state_dict(), "convnext_flowers_imagewoof.pth")
-#print("Model saved as 'convnext_flowers_imagewoof.pth'")
