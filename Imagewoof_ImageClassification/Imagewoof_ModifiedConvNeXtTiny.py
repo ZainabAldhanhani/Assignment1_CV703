@@ -1,23 +1,25 @@
 import torch
+import torch.nn as nn
 import torch.optim as optim
 from torchvision import datasets, models, transforms
-import time  
-from ptflops import get_model_complexity_info 
+from torch.utils.data import DataLoader,ConcatDataset
+import time
+from ptflops import get_model_complexity_info
 import matplotlib.pyplot as plt
 import os
-from torchvision.datasets import ImageFolder
-from torch import nn, optim
-from torch.utils.data import ConcatDataset, DataLoader
-import matplotlib.pyplot as plt
-from collections import Counter
 import urllib.request
 import tarfile
+import torchvision
+from torchvision.datasets import ImageFolder
+from collections import Counter
+from torch.nn import BatchNorm1d
+
 
 # Hyperparameters
 batch_size = 32
 num_epochs = 15  # Increased epochs for better convergence
 learning_rate = 1e-4
-weight_decay = 1e-4  
+weight_decay = 1e-4
 
 def download_imagewoof(url, download_path, extract_path):
     if not os.path.exists(os.path.dirname(download_path)):
@@ -65,21 +67,39 @@ test_dataloader = DataLoader(imagewoof_val, batch_size=32, shuffle=False,drop_la
 # Define the device
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-# Modify ConvNeXt-Tiny for 10 classes
+# Modify ConvNeXt-Tiny for 102 classes with optimizations
 class ModifiedConvNeXtTiny(nn.Module):
-    def __init__(self, num_classes=10):
+    def __init__(self, num_classes=102, freeze_layers=True, activation="GELU"):
         super(ModifiedConvNeXtTiny, self).__init__()
         self.model = models.convnext_tiny(pretrained=True)
-        
-        # Modify the classifier to match the number of classes
+
+        # Freeze early layers to reduce computational cost if needed
+        if freeze_layers:
+            for param in self.model.features[:1].parameters():
+                param.requires_grad = False
+
+        # Modify the classifier head (Optimized for ≤5% extra FLOPs and training time)
         num_features = self.model.classifier[2].in_features
+
+        # Choose activation function dynamically
+        activation_layer = {
+            "ReLU": nn.ReLU(),
+            "LeakyReLU": nn.LeakyReLU(negative_slope=0.01),
+            "SiLU": nn.SiLU(),
+            "GELU": nn.GELU()  # Default (better for ConvNeXt)
+        }[activation]
+
         self.model.classifier[2] = nn.Sequential(
-            nn.Dropout(0.5),  # Add Dropout for regularization
-            nn.Linear(num_features, num_classes)  # Output 10 classes
+            nn.Dropout(0.2),  # Reduce dropout to minimize compute overhead
+            nn.Linear(num_features, 768),  # Intermediate layer (moderate increase)
+            activation_layer,
+            BatchNorm1d(768),  # BatchNorm AFTER activation for better stability
+            nn.Linear(768, num_classes)  # Output layer
         )
 
     def forward(self, x):
         return self.model(x)
+
 
 # Initialize the model
 model = ModifiedConvNeXtTiny(num_classes=10).to(device)
@@ -100,13 +120,12 @@ criterion = SoftTargetCrossEntropy()
 
 
 # Measure FLOPs and parameter count
-with torch.cuda.device(0):  # Ensure the device matches your setup
+with torch.cuda.device(0):
     macs, params = get_model_complexity_info(
         model, (3, 224, 224), as_strings=True, print_per_layer_stat=False, verbose=False
     )
 print(f"FLOPs: {macs}, Parameters: {params}")
 
-# Continue with the training and evaluation as described in the earlier code
 
 # Define MixUp augmentation
 mixup_fn = Mixup(mixup_alpha=0.2, cutmix_alpha=0.2, prob=0.5, num_classes=10)
@@ -142,6 +161,8 @@ for epoch in range(num_epochs):
     print(f"Epoch [{epoch+1}/{num_epochs}], Loss: {epoch_loss:.4f}, Time: {epoch_time:.2f}s")
 
 print(f"Total Training Time: {total_training_time:.2f}s")
+
+
 # Evaluate the model
 print("\nEvaluating on test set...")
 model.eval()
