@@ -1,5 +1,5 @@
 # Assignment1 CV703
-This repository explores enhancing image classification by modifying the ConvNeXt architecture. We optimize performance by adapting the classifier head, integrating dropout, applying stronger data augmentations, and using a learning rate scheduler. Additionally, we replace Adam with AdamW and use SoftTargetCrossEntropy for improved training. These modifications aim to boost accuracy, reduce overfitting, and enhance model stability.
+This repository explores enhancing image classification by modifying the ConvNeXt-Tiny architecture. Performance is optimized by adapting the classifier head, incorporating an intermediate fully connected layer with a dynamically selected activation function, and integrating Batch Normalization after activation for improved stability. Regularization techniques such as Dropout and MixUp are applied, along with stronger data augmentations, to enhance generalization. Additionally, Adam is replaced with AdamW, and SoftTargetCrossEntropy is used to improve training. A learning rate scheduler is implemented, and selective layer freezing is applied to reduce computational overhead. These modifications improve accuracy, reduce overfitting, and maintain computational efficiency while ensuring that model size, training time, and FLOPs increase by no more than 5%.
 
 ## Repository Structure
 
