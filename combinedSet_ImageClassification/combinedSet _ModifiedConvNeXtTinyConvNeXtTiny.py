@@ -1,3 +1,20 @@
+import torch
+import torch.nn as nn
+import torch.optim as optim
+from torchvision import datasets, models, transforms
+from torch.utils.data import DataLoader,ConcatDataset
+import time
+from ptflops import get_model_complexity_info
+import matplotlib.pyplot as plt
+import os
+import urllib.request
+import tarfile
+import torchvision
+from torchvision.datasets import ImageFolder
+from collections import Counter
+from torch.nn import BatchNorm1d
+
+
 import os
 import torch
 import torchvision
@@ -11,13 +28,12 @@ from collections import Counter
 import urllib.request
 import tarfile
 import time
-
+from torch.nn import BatchNorm1d
 
 batch_size = 32
 num_epochs = 15  # Increased epochs for better convergence
 learning_rate = 1e-4
 weight_decay = 1e-4
-
 
 # Define device
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -54,39 +70,66 @@ transform = transforms.Compose([
     transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
 ])
 
-# Load datasets
-imagewoof_train = ImageFolder(os.path.join(imagewoof_root, 'imagewoof2-160/train'), transform=transform)
-imagewoof_val = ImageFolder(os.path.join(imagewoof_root, 'imagewoof2-160/val'), transform=transform)
+
+# Load datasets using PyTorch built-in datasets and split options
 fgvc_trainval = torchvision.datasets.FGVCAircraft(root=fgvc_aircraft_root, split='trainval', download=True, transform=transform)
 fgvc_test = torchvision.datasets.FGVCAircraft(root=fgvc_aircraft_root, split='test', download=True, transform=transform)
+
 flowers_train = torchvision.datasets.Flowers102(root=flowers102_root, split='test', download=True, transform=transform)
 flowers_test = torchvision.datasets.Flowers102(root=flowers102_root, split='train', download=True, transform=transform)
 
-# Custom dataset classes
-class RemappedDataset(torch.utils.data.Dataset):
-    def __init__(self, dataset, startlabel):
-        self.dataset = dataset
-        self.startlabel = startlabel
-        self.remapped_targets = [label + startlabel for _, label in dataset]
+# Load ImageWoof dataset using ImageFolder (train and val)
+train_dir = os.path.join(imagewoof_root, 'imagewoof2-160/train')
+valid_dir = os.path.join(imagewoof_root, 'imagewoof2-160/val')
 
-    def __len__(self):
-        return len(self.dataset)
+imagewoof_train = ImageFolder(root=train_dir, transform=transform)
+imagewoof_val = ImageFolder(root=valid_dir, transform=transform)
 
-    def __getitem__(self, index):
-        image, label = self.dataset[index]
-        return image, self.remapped_targets[index]
+# Function to update targets
+def update_targets(dataset, start_label):
+    dataset.targets = [label for _, label in dataset]
+    unique_labels = set(dataset.targets)
 
-# Remap and combine datasets
+    return dataset, start_label + len(unique_labels)
+
+# Remap labels for each dataset to avoid conflicts
 start_label = 0
-imagewoof_train = RemappedDataset(imagewoof_train, start_label)
-start_label += len(set(imagewoof_train.remapped_targets))
-fgvc_trainval = RemappedDataset(fgvc_trainval, start_label)
-start_label += len(set(fgvc_trainval.remapped_targets))
-flowers_train = RemappedDataset(flowers_train, start_label)
-start_label += len(set(flowers_train.remapped_targets))
-imagewoof_val = RemappedDataset(imagewoof_val, 0)
-fgvc_test = RemappedDataset(fgvc_test, len(set(imagewoof_train.remapped_targets)))
-flowers_test = RemappedDataset(flowers_test, len(set(imagewoof_train.remapped_targets)) + len(set(fgvc_trainval.remapped_targets)))
+
+imagewoof_train, start_label_fgcv = update_targets(imagewoof_train, start_label)
+imagewoof_val, _ = update_targets(imagewoof_val, start_label)
+
+
+class ModifiedFGVCAircraft(torchvision.datasets.FGVCAircraft):
+    def __init__(self, root, split='trainval', download=False, transform=None, startlabel=0):
+        super(ModifiedFGVCAircraft, self).__init__(root=root, split=split, download=download, transform=transform)
+        self.startlabel = startlabel
+    def __getitem__(self, index):
+        image, label = super(ModifiedFGVCAircraft, self).__getitem__(index)
+        # Add the scalar to the label when returning
+        label += self.startlabel
+        return image, label
+fgvc_trainval = ModifiedFGVCAircraft(root=fgvc_aircraft_root, split='trainval', download=True, transform=transform, startlabel=start_label_fgcv)
+fgvc_test = ModifiedFGVCAircraft(root=fgvc_aircraft_root, split='test', download=True, transform=transform, startlabel=start_label_fgcv)
+
+fgvc_trainval, start_label_flowers = update_targets(fgvc_trainval, start_label_fgcv)
+fgvc_test, _ = update_targets(fgvc_test, start_label_fgcv)
+
+
+class ModifiedFlowers102(torchvision.datasets.Flowers102):
+    def __init__(self, root, split='train', download=False, transform=None, startlabel=0):
+        super(ModifiedFlowers102, self).__init__(root=root, split=split, download=download, transform=transform)
+        self.startlabel = startlabel
+    def __getitem__(self, index):
+        image, label = super(ModifiedFlowers102, self).__getitem__(index)
+        # Add the scalar to the label when returning
+        label += self.startlabel
+        return image, label
+flowers_train = ModifiedFlowers102(root=flowers102_root, split='test', download=True, transform=transform, startlabel=start_label_flowers)
+flowers_test = ModifiedFlowers102(root=flowers102_root, split='train', download=True, transform=transform, startlabel=start_label_flowers)
+
+flowers_train, _ = update_targets(flowers_train, start_label_flowers)
+flowers_test, _ = update_targets(flowers_test, start_label_flowers)
+
 
 # Create train and test datasets
 train_dataset = ConcatDataset([imagewoof_train, fgvc_trainval, flowers_train])
@@ -97,31 +140,46 @@ train_loader = DataLoader(train_dataset, batch_size=32, shuffle=True,drop_last=T
 test_loader = DataLoader(test_dataset, batch_size=32, shuffle=False,drop_last=True)
 
 
-# Modify ConvNeXt-Tiny for 102 classes
+# Modify ConvNeXt-Tiny for 102 classes with optimizations
 class ModifiedConvNeXtTiny(nn.Module):
-    def __init__(self, num_classes=212):
+    def __init__(self, num_classes=212, freeze_layers=True, activation="GELU"):
         super(ModifiedConvNeXtTiny, self).__init__()
         self.model = models.convnext_tiny(pretrained=True)
-        
-        # Modify the classifier to match the number of classes
+
+        # Freeze early layers to reduce computational cost if needed
+        if freeze_layers:
+            for param in self.model.features[:1].parameters():  
+                param.requires_grad = False
+
+        # Modify the classifier head (Optimized for ≤5% extra FLOPs and training time)
         num_features = self.model.classifier[2].in_features
+        
+        # Choose activation function dynamically
+        activation_layer = {
+            "ReLU": nn.ReLU(),
+            "LeakyReLU": nn.LeakyReLU(negative_slope=0.01),
+            "SiLU": nn.SiLU(),
+            "GELU": nn.GELU()  # Default (better for ConvNeXt)
+        }[activation]
+
         self.model.classifier[2] = nn.Sequential(
-            nn.Dropout(0.5),  # Add Dropout for regularization
-            nn.Linear(num_features, num_classes)  # Output 102 classes
+            nn.Dropout(0.2),  # Reduce dropout to minimize compute overhead
+            nn.Linear(num_features, 768),  # Intermediate layer (moderate increase)
+            activation_layer,
+            BatchNorm1d(768),  # BatchNorm AFTER activation for better stability
+            nn.Linear(768, num_classes)  # Output layer
         )
 
     def forward(self, x):
         return self.model(x)
 
 
-# Load ConvNeXt model
-model = models.convnext_base(weights=models.ConvNeXt_Base_Weights.IMAGENET1K_V1)
 
-# Modify the classifier head for the combined dataset (212 classes)
-num_classes = len(set(imagewoof_train.remapped_targets)) + len(set(fgvc_trainval.remapped_targets)) + len(set(flowers_train.remapped_targets))
-num_features = model.classifier[2].in_features
-model.classifier[2] = nn.Linear(num_features, num_classes)
-model = model.to(device)
+# Load ConvNeXt model
+#model = models.convnext_base(weights=models.ConvNeXt_Base_Weights.IMAGENET1K_V1)
+
+model = ModifiedConvNeXtTiny(num_classes=212).to(device)
+
 
 # Define loss function and optimizer
 criterion = nn.CrossEntropyLoss()
@@ -137,13 +195,13 @@ mixup_fn = Mixup(mixup_alpha=0.2, cutmix_alpha=0.2, prob=0.5, num_classes=num_cl
 # Define loss function
 criterion = SoftTargetCrossEntropy()
 
-
 # Measure FLOPs and parameter count
 with torch.cuda.device(0):
     macs, params = get_model_complexity_info(
         model, (3, 224, 224), as_strings=True, print_per_layer_stat=False, verbose=False
     )
 print(f"FLOPs: {macs}, Parameters: {params}")
+
 
 
 # Train the model
