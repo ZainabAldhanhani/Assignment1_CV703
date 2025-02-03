@@ -2,31 +2,17 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 from torchvision import datasets, models, transforms
-from torch.utils.data import DataLoader
-import time  
-from ptflops import get_model_complexity_info 
+from torch.utils.data import DataLoader,ConcatDataset
+import time
+from ptflops import get_model_complexity_info
 import matplotlib.pyplot as plt
-
-
-# Evaluation function
-def evaluate_model(model, dataloader):
-    model.eval()
-    correct = 0
-    total = 0
-
-    with torch.no_grad():
-        for inputs, labels in dataloader:
-            inputs, labels = inputs.to(device), labels.to(device)
-
-            outputs = model(inputs)
-            _, predicted = outputs.max(1)
-            total += labels.size(0)
-            correct += predicted.eq(labels).sum().item()
-
-    accuracy = 100.0 * correct / total
-    print(f"Evaluation Accuracy: {accuracy:.2f}%")
-    return accuracy
-
+import os
+import urllib.request
+import tarfile
+import torchvision
+from torchvision.datasets import ImageFolder
+from collections import Counter
+from torch.nn import BatchNorm1d
 
 # Hyperparameters
 batch_size = 32
@@ -55,21 +41,40 @@ flowers_test = datasets.Flowers102(root="./data", split="train", download=True, 
 train_dataloader = DataLoader(flowers_train, batch_size=batch_size, shuffle=True, drop_last=True)
 test_dataloader = DataLoader(flowers_test, batch_size=batch_size, shuffle=False, drop_last=True)
 
-# Modify ConvNeXt-Tiny for 102 classes
+# Modify ConvNeXt-Tiny for 102 classes with optimizations
 class ModifiedConvNeXtTiny(nn.Module):
-    def __init__(self, num_classes=102):
+    def __init__(self, num_classes=102, freeze_layers=True, activation="GELU"):
         super(ModifiedConvNeXtTiny, self).__init__()
         self.model = models.convnext_tiny(pretrained=True)
-        
-        # Modify the classifier to match the number of classes
+
+        # Freeze early layers to reduce computational cost if needed
+        if freeze_layers:
+            for param in self.model.features[:1].parameters():
+                param.requires_grad = False
+
+        # Modify the classifier head (Optimized for ≤5% extra FLOPs and training time)
         num_features = self.model.classifier[2].in_features
+
+        # Choose activation function dynamically
+        activation_layer = {
+            "ReLU": nn.ReLU(),
+            "LeakyReLU": nn.LeakyReLU(negative_slope=0.01),
+            "SiLU": nn.SiLU(),
+            "GELU": nn.GELU()  # Default (better for ConvNeXt)
+        }[activation]
+
         self.model.classifier[2] = nn.Sequential(
-            nn.Dropout(0.5),  # Add Dropout for regularization
-            nn.Linear(num_features, num_classes)  # Output 102 classes
+            nn.Dropout(0.2),  # Reduce dropout to minimize compute overhead
+            nn.Linear(num_features, 768),  # Intermediate layer (moderate increase)
+            activation_layer,
+            BatchNorm1d(768),  # BatchNorm AFTER activation for better stability
+            nn.Linear(768, num_classes)  # Output layer
         )
 
     def forward(self, x):
         return self.model(x)
+
+
 
 # Initialize the model
 model = ModifiedConvNeXtTiny(num_classes=102).to(device)
@@ -90,7 +95,7 @@ criterion = SoftTargetCrossEntropy()
 
 
 # Measure FLOPs and parameter count
-with torch.cuda.device(0):  # Ensure the device matches your setup
+with torch.cuda.device(0):
     macs, params = get_model_complexity_info(
         model, (3, 224, 224), as_strings=True, print_per_layer_stat=False, verbose=False
     )
@@ -99,7 +104,6 @@ print(f"FLOPs: {macs}, Parameters: {params}")
 
 # Define MixUp augmentation
 mixup_fn = Mixup(mixup_alpha=0.2, cutmix_alpha=0.2, prob=0.5, num_classes=102)
-
 
 
 # Train the model
@@ -157,5 +161,3 @@ plt.ylabel('Loss')
 plt.title('Training Loss Curve')
 plt.legend()
 plt.show()
-
-
