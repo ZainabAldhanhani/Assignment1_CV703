@@ -13,7 +13,7 @@ This repository explores enhancing image classification by modifying the ConvNeX
 ## Architecture 
 Our modified ConvNeXt architecture improves performance and generalization through several enhancements. We applied stronger data augmentations like random flips, rotations, color jitter, and MixUp to improve robustness. The classifier head was updated with Dropout for better regularization, and AdamW replaced Adam for improved optimization. We also switched to SoftTargetCrossEntropy for better soft-label training and implemented a learning rate scheduler to enhance stability and convergence. These modifications collectively boost model performance and reduce overfitting.
 <p align="center">
-<img src="Figures/Diagram1.png" alt="Diagram" width="1000">
+<img src="Figures/Diagram3.png" alt="Diagram" width="400">
 </p>
 
 ## Dsataset 
